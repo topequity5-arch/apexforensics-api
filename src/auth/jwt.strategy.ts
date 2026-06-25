@@ -18,6 +18,7 @@ interface SupabaseJwtPayload {
 export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor(configService: ConfigService) {
     const jwtSecret = configService.get<string>('SUPABASE_JWT_SECRET');
+    const url = configService.get<string>('SUPABASE_URL');
 
     if (!jwtSecret) {
       throw new Error('SUPABASE_JWT_SECRET is missing from environment');
@@ -29,11 +30,11 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
         cache: true,
         rateLimit: true,
         jwksRequestsPerMinute: 5,
-        jwksUri: `https://uxtrfxbcqiuoknamlxki.supabase.co/auth/v1/.well-known/jwks.json`,
+        jwksUri: `${url}/auth/v1/.well-known/jwks.json`,
       }),
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       audience: 'authenticated',
-      issuer: `https://uxtrfxbcqiuoknamlxki.supabase.co/auth/v1`,
+      issuer: `${url}/auth/v1`,
       algorithms: ['ES256'], // Match the algorithm from your Supabase dashboard
     });
   }
