@@ -116,8 +116,8 @@ export class ClaimsService {
     const profileMap = new Map(profiles?.map((p) => [p.id, p.full_name]) || []);
 
     // 5. Construct the integrated payloads to match frontend interfaces exactly
-    return claims.map((claim) => {
-      const userId = claim.client_id;
+    return claims.map((claim: ClaimResponseDto) => {
+      const userId = claim.clientId;
       return {
         ...claim,
         profiles: {
@@ -128,6 +128,58 @@ export class ClaimsService {
       };
     });
   }
+  async getClaimsByClientId(clientId: string): Promise<any[]> {
+    // 1. Fetch claims specifically for the provided client ID
+    const { data: claims, error: claimsError } =
+      await this.supabaseService.client
+        .from('claims')
+        .select('*')
+        .eq('client_id', clientId);
+
+    if (claimsError) {
+      throw new BadRequestException(
+        `Failed to retrieve claims for client ${clientId}: ${claimsError.message}`,
+      );
+    }
+    if (!claims || claims.length === 0) return [];
+
+    // 2. Fetch the profile metadata for the single client
+    const { data: profile, error: profileError } =
+      await this.supabaseService.client
+        .from('profiles')
+        .select('id, full_name')
+        .eq('id', clientId)
+        .single();
+
+    if (profileError) {
+      throw new BadRequestException(
+        `Failed to retrieve profile for client ${clientId}: ${profileError.message}`,
+      );
+    }
+
+    // 3. Fetch the auth identity directly via Admin Auth API
+    const { data: authData, error: authError } =
+      await this.supabaseService.adminClient.auth.admin.getUserById(clientId);
+
+    if (authError) {
+      throw new BadRequestException(
+        `Failed to retrieve secure auth data for client ${clientId}: ${authError.message}`,
+      );
+    }
+
+    // 4. Construct the integrated payload
+    const clientProfile = {
+      id: clientId,
+      full_name: profile?.full_name || 'Anonymous Client',
+      email: authData.user?.email || 'No registered account email',
+    };
+
+    return claims.map((claim) => ({
+      ...claim,
+      profiles: clientProfile,
+    }));
+  }
+
   async updateClaim(
     claimId: string,
     user: { id: string; role: string },

@@ -16,6 +16,8 @@ import type { AuthenticatedRequest } from '../auth/interface/authenticated-reque
 import { CreateClaimDto, UpdateClaimDto } from './dto/claims.dto';
 import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
 import { ApiBearerAuth } from '@nestjs/swagger';
+import { plainToInstance } from 'class-transformer';
+import { ClaimResponseDto } from './dto/claims_response.dto';
 
 @Controller('claims')
 @ApiBearerAuth('JWT-auth')
@@ -31,6 +33,14 @@ export class ClaimsController {
   @Get()
   async findAll() {
     return this.claimsService.getClaims();
+  }
+
+  @Get(':clientId')
+  async findByClientId(
+    @Param('clientId') clientId: string,
+  ): Promise<ClaimResponseDto[]> {
+    const claims = await this.claimsService.getClaimsByClientId(clientId);
+    return plainToInstance(ClaimResponseDto, claims);
   }
 
   @Patch(':id')
